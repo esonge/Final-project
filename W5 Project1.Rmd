@@ -1,0 +1,91 @@
+---
+title: "NYPD Shooting Incident Data Project"
+author: "E. Song"
+date: '2022-05-12'
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## NYPD Shooting Incident Data
+
+### Step 1. Start an Rmd Document
+
+This is an Rmd document that imports and analyzes the shooting incident data set. Through this data analysis, I will check whether there is a difference in the number of shootings in New York by borough and the trend by year.
+The data is from the website https://catalog.data.gov/dataset. It is a list of shooting incident that occurred in New York City going back to 2006 through the end of 2020.
+
+```{r import_data}
+library(htmltools)
+library(readr)
+
+shooting <- read_csv("https://data.cityofnewyork.us/api/views/833y-fsy8/rows.csv")
+```
+
+### Step 2. Tidy and Transform Your Data
+
+```{r library, message=FALSE}
+library(dplyr)
+library(lubridate)
+```
+
+```{r tidy}
+shooting <- shooting %>%
+  mutate(OCCUR_DATE = mdy(OCCUR_DATE))
+```
+
+```{r select}
+shooting <- shooting %>%
+  select(c(OCCUR_DATE,BORO,STATISTICAL_MURDER_FLAG))
+shooting$YEAR <- as.Date(cut(shooting$OCCUR_DATE,
+  breaks = "year"))
+```
+
+```{r check_data}
+shooting
+summary(shooting)
+```
+
+### Step 3. Add Visualizations and Analysis
+
+```{r analyze_boro}
+library(ggplot2)
+
+s_boro <- ggplot(data=shooting, aes(x=BORO,fill=BORO))+geom_bar()
+s_boro+ggtitle("Shootings in New York")+xlab("Borough")+ylab("Number of Shootings")
+```
+
+From the beginning of 2006 to the end of 2020, the most common shootings in New York City occurred in Brooklyn, followed by the Bronx, Queens, Manhattan and Staten Island. Brooklyn's shootings were over ten times more common than on Staten Island.
+
+```{r analyze_year}
+s_year <- ggplot(data=shooting, aes(x=YEAR))+geom_bar(fill='orange')
+s_year+ggtitle("Shootings in New York")+xlab("Year")+ylab("Number of Shootings")
+```
+
+From 2006 to 2020, the year with the highest number of shooting incidents in New York City was 2006, and the year with the lowest was 2018.
+
+### Modeling
+
+```{r model}
+shooting <- table(shooting$OCCUR_DATE,shooting$STATISTICAL_MURDER_FLAG)
+murder <- shooting[,2]
+total <- shooting[,1]+shooting[,2]
+shooting_m <- data.frame(murder,total)
+mod = lm(murder~total,data=shooting_m)
+summary(mod)
+plot(total,murder,pch=20)
+abline(lm(murder~total))
+```
+
+The linear regression model shows that there is a relationship between the total number of shootings and the shootings with murder flag. 
+
+### Step 4. Add Bias Identification
+
+There is a possibility that there may be bias in this data analysis. This was analyzed based on the shooting incident data provided by the NYPD, and undefined/non-response answers were also reflected. In addition, the statistics based on the data may differ from the reality because the NYPD data does not include unreported events.
+
+### Conclusion
+
+The conclusion of this analysis is that from 2006 to 2019, there was regional variation in the number of shootings in New York City, and the number maintained or decreased, and then increased again in 2020. Fatal shootings with a murder flag also increased with the total number of shootings.
